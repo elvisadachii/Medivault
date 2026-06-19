@@ -6,6 +6,7 @@ A responsive multi-page website for a well equipped pharmacy, built with HTML5, 
 - Home
 - About
 - Prescriptions
+- Product pricing
 - Gallery
 - Services
 - Testimonials
