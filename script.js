@@ -12,3 +12,21 @@ const PRODUCTS = [
   {id:11,name:'Diclofenac Gel 1%',sub:'Topical Pain Relief · 50g',price:290,cat:'pain-relief',emoji:'🔥',rx:true,uses:'Topical anti-inflammatory for joint/muscle pain and sprains.',dosage:'Apply to affected area 3–4× daily. No airtight bandage.',ingredients:'Diclofenac Diethylammonium 1.16%, Carbomer, Propylene Glycol.',warning:'Do not apply to broken skin. Wash hands after.'},
   {id:12,name:'Calcium + Magnesium',sub:'Bone Support · 60 tabs',price:420,cat:'vitamins',emoji:'🦴',rx:false,uses:'Supports bones, teeth, muscle and nervous system.',dosage:'2 tabs daily with a meal.',ingredients:'Calcium Carbonate 500mg, Magnesium Oxide 250mg, Vitamin D3 200IU.',warning:'Consult doctor if history of kidney stones.'},
 ];
+
+
+
+const getCart  = () => { try { return JSON.parse(sessionStorage.getItem('mv_cart')||'[]'); } catch { return []; } };
+const saveCart = c => sessionStorage.setItem('mv_cart', JSON.stringify(c));
+const cartSum  = c => c.reduce((s,i) => s + i.price*i.qty, 0);
+
+function updateBadges() {
+  const n = getCart().reduce((s,i) => s+i.qty, 0);
+  document.querySelectorAll('.cart-count').forEach(el => el.textContent = n);
+}
+
+function addToCart(p, qty) {
+  const cart = getCart(), found = cart.find(i => i.id===p.id);
+  found ? found.qty+=qty : cart.push({id:p.id,name:p.name,price:p.price,emoji:p.emoji,qty});
+  saveCart(cart); updateBadges();
+}
+
