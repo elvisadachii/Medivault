@@ -1,114 +1,14 @@
-document.addEventListener('DOMContentLoaded', () => {
-  const nav = document.querySelector('.navbar-mv');
-  if (nav) {
-    window.addEventListener('scroll', () => {
-      nav.classList.toggle('is-scrolled', window.scrollY > 10);
-    }, { passive: true });
-  }
-
-  const filterBar = document.getElementById('filterBar');
-  if (filterBar) {
-    const param = new URLSearchParams(location.search).get('cat');
-    if (param) {
-      filterBar.querySelectorAll('.filter-chip').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.filter === param);
-      });
-      applyFilter(param);
-    }
-
-    filterBar.addEventListener('click', e => {
-      const btn = e.target.closest('.filter-chip');
-      if (!btn) return;
-      filterBar.querySelectorAll('.filter-chip').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      applyFilter(btn.dataset.filter);
-    });
-  }
-
-  function applyFilter(cat) {
-    document.querySelectorAll('.product-item').forEach(item => {
-      item.style.display = (cat === 'all' || item.dataset.cat === cat) ? '' : 'none';
-    });
-  }
-
-  const contactForm = document.getElementById('contactForm');
-  if (contactForm) {
-    contactForm.addEventListener('submit', e => {
-      e.preventDefault();
-      if (!contactForm.checkValidity()) {
-        contactForm.querySelectorAll('[required]').forEach(field => {
-          field.classList.toggle('is-invalid', !field.validity.valid);
-          field.classList.toggle('is-valid', field.validity.valid);
-        });
-        return;
-      }
-      const fb = document.getElementById('formFeedback');
-      fb.style.color = 'var(--sage)';
-      fb.textContent = '✓ Message sent! We\'ll get back to you within a few hours.';
-      contactForm.reset();
-      contactForm.querySelectorAll('.is-valid').forEach(f => f.classList.remove('is-valid'));
-    });
-
-    contactForm.querySelectorAll('[required]').forEach(field => {
-      field.addEventListener('input', () => {
-        field.classList.remove('is-invalid');
-        if (field.validity.valid) field.classList.add('is-valid');
-      });
-    });
-  }
-
-  document.querySelectorAll('#newsletterForm').forEach(form => {
-    form.addEventListener('submit', e => {
-      e.preventDefault();
-      const input = form.querySelector('[type="email"]');
-      const fb = form.closest('div, footer').querySelector('[data-newsletter-feedback]');
-      if (!input.validity.valid) {
-        input.classList.add('is-invalid');
-        return;
-      }
-      input.classList.remove('is-invalid');
-      if (fb) { fb.style.color = 'var(--sage-mid)'; fb.textContent = '✓ You\'re in! Talk soon.'; }
-      form.reset();
-    });
-  });
-
-});
-
-  const rxUpload = document.getElementById('rxUpload');
-  if (rxUpload) {
-    rxUpload.addEventListener('change', () => {
-      const file = rxUpload.files[0];
-      const fb = document.getElementById('uploadFeedback');
-      if (file) fb.textContent = '✓ ' + file.name + ' attached';
-    });
-  }
-
-  const orderForm = document.getElementById('orderForm');
-  if (orderForm) {
-    orderForm.addEventListener('submit', e => {
-      e.preventDefault();
-      const required = orderForm.querySelectorAll('[required]');
-      let valid = true;
-      required.forEach(field => {
-        const ok = field.validity.valid;
-        field.classList.toggle('is-invalid', !ok);
-        field.classList.toggle('is-valid', ok);
-        if (!ok) valid = false;
-      });
-      if (!valid) return;
-      const fb = document.getElementById('orderFeedback');
-      fb.style.color = 'var(--sage)';
-      fb.innerHTML = '✓ Order received! A pharmacist will confirm your order via WhatsApp shortly.';
-      orderForm.reset();
-      orderForm.querySelectorAll('.is-valid').forEach(f => f.classList.remove('is-valid'));
-      document.getElementById('uploadFeedback').textContent = '';
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    });
-
-    orderForm.querySelectorAll('[required]').forEach(field => {
-      field.addEventListener('input', () => {
-        field.classList.remove('is-invalid');
-        if (field.validity.valid) field.classList.add('is-valid');
-      });
-    });
-  }
+const PRODUCTS = [
+  {id:1,name:'Paracetamol 500mg',sub:'Pain & Fever · 24 tabs',price:120,cat:'pain-relief',emoji:'💊',rx:true,uses:'Relieves mild to moderate pain and reduces fever. For headaches, toothaches, backaches and cold symptoms.',dosage:'Adults: 1–2 tabs every 4–6 hrs. Max 8 tabs/day.',ingredients:'Paracetamol 500mg, Maize starch, Povidone, Stearic acid.',warning:'Avoid with liver conditions. Consult pharmacist if pregnant.'},
+  {id:2,name:'Ibuprofen 400mg',sub:'Anti-inflammatory · 20 tabs',price:180,cat:'pain-relief',emoji:'🩹',rx:false,uses:'Reduces inflammation, pain and fever. For muscle pain, arthritis and dental pain.',dosage:'1 tab 3× daily with food.',ingredients:'Ibuprofen 400mg, Microcrystalline cellulose, Croscarmellose sodium.',warning:'Avoid with stomach ulcers or kidney problems.'},
+  {id:3,name:'Vitamin C 1000mg',sub:'Immune Support · 30 tabs',price:350,cat:'vitamins',emoji:'🌿',rx:false,uses:'Supports immune function and acts as an antioxidant.',dosage:'1 tab daily with a meal.',ingredients:'Ascorbic acid 1000mg, Citrus bioflavonoids, Rose hip extract.',warning:'May cause digestive discomfort in high doses.'},
+  {id:4,name:'Vitamin D3 2000IU',sub:'Bone & Immunity · 60 caps',price:480,cat:'vitamins',emoji:'☀️',rx:false,uses:'Supports bone health, calcium absorption and immunity.',dosage:'1 cap daily with a fatty meal.',ingredients:'Cholecalciferol 2000IU, Olive oil, Gelatin.',warning:'Do not exceed dose. Check with doctor if on calcium supplements.'},
+  {id:5,name:'Multivitamin Daily',sub:'Complete Formula · 30 tabs',price:550,cat:'vitamins',emoji:'💪',rx:false,uses:'Comprehensive daily vitamins A, B complex, C, D, E and key minerals.',dosage:'1 tab daily with breakfast.',ingredients:'Vitamins A, B1–B12, C, D3, E, Folic Acid, Iron, Zinc, Magnesium.',warning:'Not a substitute for a balanced diet.'},
+  {id:6,name:'SPF 50 Sunscreen',sub:'Daily UV Protection · 75ml',price:890,cat:'skincare',emoji:'✨',rx:false,uses:'Protects from UVA/UVB rays. For daily use on face and body.',dosage:'Apply 15 min before sun exposure. Reapply every 2 hrs.',ingredients:'Zinc Oxide, Titanium Dioxide, Aloe Vera, Vitamin E, Glycerin.',warning:'Avoid eyes. Discontinue if irritation occurs.'},
+  {id:7,name:'Hydrating Moisturiser',sub:'All Skin Types · 100ml',price:720,cat:'skincare',emoji:'💧',rx:false,uses:'Deep hydration, lightweight and non-greasy.',dosage:'Apply to clean face morning and evening.',ingredients:'Hyaluronic Acid, Shea Butter, Niacinamide, Aloe Vera.',warning:'Patch test recommended for sensitive skin.'},
+  {id:8,name:'Gentle Cleanser',sub:'Sensitive Skin · 150ml',price:580,cat:'skincare',emoji:'🧴',rx:false,uses:'Removes impurities without stripping the skin barrier. Soap and fragrance free.',dosage:'Apply to damp skin, massage and rinse. Use twice daily.',ingredients:'Cocamidopropyl Betaine, Glycerin, Panthenol, Chamomile Extract.',warning:'Avoid contact with eyes.'},
+  {id:9,name:'Blood Pressure Monitor',sub:'Digital · Upper Arm',price:3200,cat:'devices',emoji:'🩺',rx:false,uses:'Clinically validated home BP monitor. Stores 60 readings.',dosage:'Sit quietly 5 min before measuring. Same time daily.',ingredients:'Medical device. Includes cuff, batteries and case.',warning:'Not a replacement for professional diagnosis.'},
+  {id:10,name:'Digital Thermometer',sub:'Fast Read · 10 sec',price:650,cat:'devices',emoji:'🌡️',rx:false,uses:'Accurate temperature in under 10 seconds. All ages.',dosage:'Oral, underarm or rectal. Clean probe before and after use.',ingredients:'Medical device. Includes battery.',warning:'Replace battery when indicator appears.'},
+  {id:11,name:'Diclofenac Gel 1%',sub:'Topical Pain Relief · 50g',price:290,cat:'pain-relief',emoji:'🔥',rx:true,uses:'Topical anti-inflammatory for joint/muscle pain and sprains.',dosage:'Apply to affected area 3–4× daily. No airtight bandage.',ingredients:'Diclofenac Diethylammonium 1.16%, Carbomer, Propylene Glycol.',warning:'Do not apply to broken skin. Wash hands after.'},
+  {id:12,name:'Calcium + Magnesium',sub:'Bone Support · 60 tabs',price:420,cat:'vitamins',emoji:'🦴',rx:false,uses:'Supports bones, teeth, muscle and nervous system.',dosage:'2 tabs daily with a meal.',ingredients:'Calcium Carbonate 500mg, Magnesium Oxide 250mg, Vitamin D3 200IU.',warning:'Consult doctor if history of kidney stones.'},
+];
