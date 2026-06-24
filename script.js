@@ -30,3 +30,12 @@ function addToCart(p, qty) {
   saveCart(cart); updateBadges();
 }
 
+function changeQty(id, d) {
+  const cart = getCart(), item = cart.find(i=>i.id===id);
+  if (!item) return;
+  item.qty += d;
+  if (item.qty<=0) cart.splice(cart.indexOf(item),1);
+  saveCart(cart); updateBadges(); renderOrderCart();
+}
+
+function removeItem(id) { saveCart(getCart().filter(i=>i.id!==id)); updateBadges(); renderOrderCart(); }
