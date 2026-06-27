@@ -46,4 +46,261 @@ function changeQty(id, d) {
   saveCart(cart); updateBadges(); renderOrderCart();
 }
 
-function removeItem(id) { saveCart(getCart().filter(i=>i.id!==id)); updateBadges(); renderOrderCart(); }
+function removeItem(id) {
+  saveCart(getCart().filter(i => i.id !== id));
+  updateBadges();
+  if (typeof renderOrderCart === 'function') renderOrderCart();
+}
+
+function formatCurrency(value) {
+  return `KSh ${value.toLocaleString()}`;
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const nav = document.querySelector('.navbar-mv');
+  if (nav) {
+    window.addEventListener('scroll', () => nav.classList.toggle('is-scrolled', window.scrollY > 10), { passive: true });
+  }
+  updateBadges();
+
+  const grid = document.getElementById('productGrid');
+  if (grid) {
+    const filterBar = document.getElementById('filterBar');
+    const param = new URLSearchParams(window.location.search).get('cat');
+    if (filterBar) {
+      filterBar.querySelectorAll('.filter-chip').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.filter === param);
+      });
+    }
+    renderProducts(param || 'all');
+
+    filterBar?.addEventListener('click', e => {
+      const btn = e.target.closest('.filter-chip');
+      if (!btn) return;
+      filterBar.querySelectorAll('.filter-chip').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      renderProducts(btn.dataset.filter);
+    });
+
+    let cur = null;
+    let qty = 1;
+    const qtyEl = () => document.getElementById('modalQty');
+
+    document.getElementById('modalQtyMinus')?.addEventListener('click', () => {
+      if (qty > 1) {
+        qty -= 1;
+        qtyEl().textContent = qty;
+      }
+    });
+
+    document.getElementById('modalQtyPlus')?.addEventListener('click', () => {
+      qty += 1;
+      qtyEl().textContent = qty;
+    });
+
+    const modalEl = document.getElementById('productModal');
+    const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+
+    document.getElementById('modalAddToCart')?.addEventListener('click', () => {
+      if (!cur) return;
+      addToCart(cur, qty);
+      modal.hide();
+      toast(`${cur.name} added to cart`);
+    });
+
+    grid.addEventListener('click', e => {
+      const card = e.target.closest('[data-product-id]');
+      if (!card) return;
+      cur = PRODUCTS.find(p => p.id === +card.dataset.productId);
+      if (!cur) return;
+      qty = 1;
+      qtyEl().textContent = 1;
+      document.getElementById('productModalLabel').textContent = cur.name;
+      document.getElementById('productModalBody').innerHTML = `
+        <div class="d-flex align-items-center gap-3 mb-4">
+          <div style="font-size:2.8rem">${cur.emoji}</div>
+          <div>
+            <div style="font-size:.8rem;color:var(--muted)">${cur.sub}</div>
+            <div style="font-size:1.2rem;font-weight:700;color:var(--sage)">${formatCurrency(cur.price)}</div>
+            ${cur.rx ? '<span class="badge-rx" style="position:static;display:inline-block;margin-top:.3rem">Prescription</span>' : ''}
+          </div>
+        </div>
+        <div class="accordion" id="pa">
+          ${acc('pa', 'u', 'Uses & Benefits', cur.uses)}
+          ${acc('pa', 'd', 'Dosage & How to Use', cur.dosage)}
+          ${acc('pa', 'i', 'Ingredients', cur.ingredients)}
+          ${acc('pa', 'w', 'Warnings', cur.warning)}
+        </div>`;
+      modal.show();
+    });
+  }
+
+  if (document.getElementById('cartItems')) renderOrderCart();
+
+  const orderForm = document.getElementById('orderForm');
+  if (orderForm) {
+    orderForm.addEventListener('submit', e => {
+      e.preventDefault();
+      const fb = document.getElementById('orderFeedback');
+      if (!getCart().length) {
+        fb.style.color = '#c0392b';
+        fb.textContent = 'Your cart is empty. Add products before placing an order.';
+        return;
+      }
+
+      let ok = true;
+      orderForm.querySelectorAll('[required]').forEach(field => {
+        const valid = field.validity.valid;
+        field.classList.toggle('is-invalid', !valid);
+        field.classList.toggle('is-valid', valid);
+        if (!valid) ok = false;
+      });
+
+      if (!ok) {
+        fb.style.color = '#c0392b';
+        fb.textContent = 'Please complete the highlighted fields.';
+        return;
+      }
+
+      saveCart([]);
+      updateBadges();
+      renderOrderCart();
+      fb.style.color = 'var(--sage)';
+      fb.textContent = '✓ Order placed! A pharmacist will confirm by WhatsApp shortly.';
+      orderForm.reset();
+      orderForm.querySelectorAll('.is-valid').forEach(el => el.classList.remove('is-valid'));
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+
+    orderForm.querySelectorAll('[required]').forEach(field => {
+      field.addEventListener('input', () => {
+        field.classList.remove('is-invalid');
+        if (field.validity.valid) field.classList.add('is-valid');
+      });
+      field.addEventListener('change', () => {
+        field.classList.remove('is-invalid');
+        if (field.validity.valid) field.classList.add('is-valid');
+      });
+    });
+  }
+
+  const rx = document.getElementById('rxUpload');
+  if (rx) {
+    rx.addEventListener('change', () => {
+      const feedback = document.getElementById('uploadFeedback');
+      if (rx.files[0]) feedback.textContent = '✓ ' + rx.files[0].name + ' attached';
+    });
+  }
+
+  document.querySelectorAll('#newsletterForm').forEach(form => {
+    form.addEventListener('submit', e => {
+      e.preventDefault();
+      const inp = form.querySelector('[type="email"]');
+      const fb = form.closest('div,footer').querySelector('[data-newsletter-feedback]');
+      if (!inp.validity.valid) {
+        inp.classList.add('is-invalid');
+        return;
+      }
+      inp.classList.remove('is-invalid');
+      if (fb) {
+        fb.style.color = 'var(--sage-mid)';
+        fb.textContent = '✓ You\'re in!';
+      }
+      form.reset();
+    });
+  });
+});
+
+function renderProducts(filter) {
+  const grid = document.getElementById('productGrid');
+  if (!grid) return;
+  const items = filter === 'all' ? PRODUCTS : PRODUCTS.filter(p => p.cat === filter);
+  grid.innerHTML = items.map(p => `
+    <div class="col-6 col-md-4 col-lg-3">
+      <div class="product-card" data-product-id="${p.id}" style="cursor:pointer">
+        <div class="product-media">${p.emoji}${p.rx ? '<span class="badge-rx">Rx</span>' : ''}</div>
+        <div class="product-body">
+          <div class="product-name">${p.name}</div>
+          <div class="product-sub">${p.sub}</div>
+          <div class="price">${formatCurrency(p.price)}</div>
+          <button class="btn-capsule btn-sm mt-2" style="pointer-events:none"><i class="bi bi-eye"></i> View & Add</button>
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+function renderOrderCart() {
+  const cart = getCart();
+  const el = document.getElementById('cartItems');
+  if (!el) return;
+  const empty = document.getElementById('cartEmpty');
+  const summary = document.getElementById('cartSummary');
+  const sideItems = document.getElementById('sideCartItems');
+  const sideTotal = document.getElementById('sideTotal');
+  const totalEl = document.getElementById('cartTotal');
+
+  if (!cart.length) {
+    if (empty) empty.style.display = '';
+    el.innerHTML = '';
+    if (summary) summary.style.display = 'none';
+    if (sideItems) sideItems.innerHTML = '<div style="font-size:.82rem;color:var(--muted)">No items yet.</div>';
+    if (sideTotal) sideTotal.textContent = formatCurrency(0);
+    if (totalEl) totalEl.textContent = formatCurrency(0);
+    return;
+  }
+
+  if (empty) empty.style.display = 'none';
+  if (summary) summary.style.display = '';
+
+  el.innerHTML = cart.map(i => `
+    <div class="why-card" style="padding:1rem 1.25rem">
+      <div class="d-flex align-items-center gap-3 flex-wrap">
+        <div style="font-size:1.8rem;flex-shrink:0">${i.emoji}</div>
+        <div style="flex:1;min-width:180px">
+          <div style="font-weight:700;font-size:.92rem">${i.name}</div>
+          <div style="font-size:.78rem;color:var(--muted)">${formatCurrency(i.price)} each</div>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+          <button class="qty-btn" onclick="changeQty(${i.id}, -1)">−</button>
+          <span style="font-weight:700;min-width:20px;text-align:center">${i.qty}</span>
+          <button class="qty-btn" onclick="changeQty(${i.id}, 1)">+</button>
+        </div>
+        <div style="font-weight:700;color:var(--sage);min-width:90px;text-align:right">${formatCurrency(i.price * i.qty)}</div>
+        <button class="qty-btn" style="color:#c0392b;border-color:#c0392b" onclick="removeItem(${i.id})"><i class="bi bi-trash"></i></button>
+      </div>
+    </div>`).join('');
+
+  const total = cartSum(cart) + 200;
+  if (totalEl) totalEl.textContent = formatCurrency(total);
+  if (sideTotal) sideTotal.textContent = formatCurrency(total);
+  if (sideItems) {
+    sideItems.innerHTML = cart.map(i => `
+      <div class="d-flex justify-content-between" style="font-size:.82rem">
+        <span>${i.name} ×${i.qty}</span>
+        <span style="color:var(--sage);font-weight:600">${formatCurrency(i.price * i.qty)}</span>
+      </div>`).join('');
+  }
+}
+
+function acc(parent, key, title, body) {
+  return `<div class="accordion-item">
+    <h2 class="accordion-header"><button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#${key}">${title}</button></h2>
+    <div id="${key}" class="accordion-collapse collapse" data-bs-parent="#${parent}">
+      <div class="accordion-body" style="font-size:.88rem;color:var(--muted);line-height:1.7">${body}</div>
+    </div>
+  </div>`;
+}
+
+function toast(msg) {
+  let t = document.getElementById('mv-toast');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = 'mv-toast';
+    t.style.cssText = 'position:fixed;bottom:1.5rem;right:1.5rem;background:var(--sage);color:#fff;padding:.75rem 1.25rem;border-radius:var(--pill);font-size:.88rem;font-weight:600;z-index:9999;box-shadow:0 8px 24px -8px rgba(0,0,0,.3);transition:opacity .3s';
+    document.body.appendChild(t);
+  }
+  t.textContent = '✓ ' + msg;
+  t.style.opacity = '1';
+  clearTimeout(t._t);
+  t._t = setTimeout(() => t.style.opacity = '0', 2500);
+}
